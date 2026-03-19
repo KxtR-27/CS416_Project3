@@ -8,59 +8,54 @@ import java.net.DatagramSocket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 public class router {
     private final String id;
     private final int  gatewayPort;
-    private DatagramSocket socket;
+    private final DatagramSocket socket;
     private final Map<String, InetSocketAddress> routingTable = new LinkedHashMap<>();
+    private final Map<String, List<String>> globalTopology = new LinkedHashMap<>();
     private final Map<String, String> virtualRoutingTable = new HashMap<>();
 
     public router(String id){
         this.id = id;
+        ConfigTypes.RouterConfig myConfig = ConfigParser.getRouterConfig(id);
+        this.gatewayPort = myConfig.realPort();
         try {
-            ConfigTypes.RouterConfig myConfig = ConfigParser.getRouterConfig(id);
-            this.gatewayPort = myConfig.realPort();
             this.socket = new DatagramSocket(gatewayPort);
-            String ip = null;
-            int port = -1;
-
-            System.out.println("Config loaded for " + id);
-            Map<String, String> forwarder = myConfig.forwardingTable();
-            for (Map.Entry<String, String> entry : forwarder.entrySet()){
-                String subnet = entry.getKey();
-                String nextHopId = entry.getValue();
-                virtualRoutingTable.put(subnet, nextHopId);
-                ConfigTypes.RouterConfig nextHopConfig = ConfigParser.getRouterConfig(nextHopId);
-                if(nextHopConfig != null) {
-                    routingTable.put(subnet, new InetSocketAddress(nextHopConfig.realIP(), nextHopConfig.realPort()));
-                }
-                else {
-                    ConfigTypes.SwitchConfig switchConfig = ConfigParser.getSwitchConfig(nextHopId);
-                    if(switchConfig !=  null) {
-                        ip = switchConfig.ipAddress();
-                        port = switchConfig.port();
-                    }
-                    else{
-                        ConfigTypes.HostConfig hostConfig = ConfigParser.getHostConfig(nextHopId);
-                        if(hostConfig != null){
-                            ip = hostConfig.realIP();
-                            port = hostConfig.realPort();
-                        }
-                    }
-                    if(ip != null && port != -1){
-                        routingTable.put(subnet, new InetSocketAddress(ip, port));
-                    }else {
-                        System.err.println("NPE Prevention: ID '" + nextHopId + "' not found in any config map!");
-                    }
-                }
-            }
         } catch (SocketException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void handleLSA(String payload){
+        try {
+            String[] parts = payload.split("\\.");
+            if (parts.length < 2) return;
+
+            String origin = parts[0];
+            List<String> neighbors = Arrays.asList(parts[1].split("\\."));
+
+            if(!neighbors.equals(globalTopology.get(origin))){
+                globalTopology.put(origin, neighbors);
+                System.out.println("[ROUTER " + this.id + "] Learned " + origin);
+
+                sendLSA(payload, origin);
+
+                computeDijkstra();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void sendLSA(String payload, String origin){
+
+    }
+
+    private void computeDijkstra(){
+
     }
 
     public void print_routing_table(){
@@ -73,48 +68,50 @@ public class router {
     }
 
     private void processFrame(String frame) throws IOException {
-        // format: srcMac:dstMac:srcIp:dstIp:msg
-        String[] parts= frame.split(":", 5);
-        if (parts.length != 5) {
-            System.out.println("[ROUTER " + this.id + "] bad frame (needs 5 fields): " + frame);
+        // format: type:srcMac:dstMac:srcIp:dstIp:msg
+        String[] parts = frame.split(":", 6);
+        if (parts.length != 6) {
+            System.out.println("[ROUTER " + this.id + "] bad frame (needs 6 fields): " + frame);
             return;
         }
 
-
-        String srcMac = parts[0].trim();
-        String dstMac = parts[1].trim();
-        String srcIp = parts[2].trim();
-        String dstIp = parts[3].trim();
-        String msg = parts[4];
-
-        if (!dstMac.equals(this.id)) {
-            System.out.println("[ROUTER " + this.id + "] Received frame for " + dstMac + " - Not for me. Ignoring/Dropping.");
-            return;
-        }
-
-        System.out.println("[ROUTER " + this.id + "] " +
-                "srcMac=" + srcMac + " dstMac=" + dstMac +
-                " srcIp=" + srcIp + " dstIp=" + dstIp + " msg=" + msg);
-
-        // get "net3" from "net3.D", then turn it into "subnet3"
-        String key = "subnet" + dstIp.split("\\.", 2)[0].substring(3);
-
-        InetSocketAddress next = routingTable.get(key);
-        String nextHopId = virtualRoutingTable.get(key);
-
-        String dstMacForFrame;
-        if (nextHopId.startsWith("S")) {
-            dstMacForFrame = dstIp.split("\\.")[1];
+        if (parts[0].equals("1")) {
+            handleLSA(parts[4]);
         } else {
-            // If sending to another router, use the router's ID
-            dstMacForFrame = nextHopId;
+            String srcMac = parts[1].trim();
+            String dstMac = parts[2].trim();
+            String srcIp = parts[3].trim();
+            String dstIp = parts[4].trim();
+            String msg = parts[5];
+            if (!dstMac.equals(this.id)) {
+                System.out.println("[ROUTER " + this.id + "] Received frame for " + dstMac + " - Not for me. Ignoring/Dropping.");
+                return;
+            }
+
+            System.out.println("[ROUTER " + this.id + "] " +
+                    "srcMac=" + srcMac + " dstMac=" + dstMac +
+                    " srcIp=" + srcIp + " dstIp=" + dstIp + " msg=" + msg);
+
+            // get "net3" from "net3.D", then turn it into "subnet3"
+            String key = "subnet" + dstIp.split("\\.", 2)[0].substring(3);
+
+            InetSocketAddress next = routingTable.get(key);
+            String nextHopId = virtualRoutingTable.get(key);
+
+            String dstMacForFrame;
+            if (nextHopId.startsWith("S")) {
+                dstMacForFrame = dstIp.split("\\.")[1];
+            } else {
+                // If sending to another router, use the router's ID
+                dstMacForFrame = nextHopId;
+            }
+
+            String out = this.id + ":" + dstMacForFrame + ":" + srcIp + ":" + dstIp + ":" + msg;
+            System.out.println("[ROUTER " + this.id + "] OUTGOING FRAME: " + out);
+
+            byte[] data = out.getBytes(StandardCharsets.UTF_8);
+            socket.send(new DatagramPacket(data, data.length, next));
         }
-
-        String out = this.id + ":" + dstMacForFrame + ":" + srcIp + ":" + dstIp + ":" + msg;
-        System.out.println("[ROUTER " + this.id + "] OUTGOING FRAME: " + out);
-
-        byte[] data = out.getBytes(StandardCharsets.UTF_8);
-        socket.send(new DatagramPacket(data, data.length, next));
     }
 
     public void startListening() {
