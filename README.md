@@ -25,10 +25,13 @@ This section addresses and satisfies that material.
     - **Absentees:** Camryn
 - **<ins>Wednesday, 3/18/2026</ins> <kbd>in-class</kbd>**
     - **Attendees:** Tim, Camryn, Kyle
-    - **Absentees:** Kat, Brody
+    - **Absentees:** Kat
 - **<ins>Friday, 3/20/2026</ins> <kbd>in-class</kbd>**
-    - **Attendees:** ..., ...
-    - **Absentees:** Kat, ...
+    - **Attendees:** Brody, Kyle
+    - **Absentees:** Tim, Kat, Camryn
+- **<ins>Monday, 3/23/2026</ins> <kbd>in-class</kbd>**
+    - **Attendees:** Tim, Brody, Kat, Kyle, Camryn
+
 
 ### Contributions
 
