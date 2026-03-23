@@ -26,6 +26,9 @@ This section addresses and satisfies that material.
 - **<ins>Wednesday, 3/18/2026</ins> <kbd>in-class</kbd>**
     - **Attendees:** Tim, Camryn, Kyle
     - **Absentees:** Kat, Brody
+- **<ins>Friday, 3/20/2026</ins> <kbd>in-class</kbd>**
+    - **Attendees:** ..., ...
+    - **Absentees:** Kat, ...
 
 ### Contributions
 
