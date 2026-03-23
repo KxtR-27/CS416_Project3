@@ -6,19 +6,15 @@
             "realPort": 3300,
             "virtualIP": "net1.A",
             "gatewayVIP": "net1.R1",
-            "neighbors": [
-                "S1"
-            ]
+            "neighbors": ["S1"]
         },
         {
             "id": "B",
             "realIP": "127.0.0.1",
             "realPort": 3301,
-            "virtualIP": "net1.B",
-            "gatewayVIP": "net1.R1",
-            "neighbors": [
-                "S1"
-            ]
+            "virtualIP": "net2.B",
+            "gatewayVIP": "net2.R3",
+            "neighbors": ["S2"]
         },
         {
             "id": "C",
@@ -26,41 +22,27 @@
             "realPort": 3302,
             "virtualIP": "net3.C",
             "gatewayVIP": "net3.R2",
-            "neighbors": [
-                "S2"
-            ]
-        },
-        {
-            "id": "D",
-            "realIP": "127.0.0.1",
-            "realPort": 3303,
-            "virtualIP": "net3.D",
-            "gatewayVIP": "net3.R2",
-            "neighbors": [
-                "S2"
-            ]
+            "neighbors": ["S3"]
         }
     ],
     "switches": [
         {
             "id": "S1",
-            "ipAddress": "10.222.54.93",
-            "port": 3304,
-            "neighbors": [
-                "A",
-                "B",
-                "R1"
-            ]
+            "ipAddress": "127.0.0.1",
+            "port": 3303,
+            "neighbors": ["A"]
         },
         {
             "id": "S2",
-            "ipAddress": "10.222.54.93",
+            "ipAddress": "127.0.0.1",
+            "port": 3304,
+            "neighbors": ["B"]
+        },
+        {
+            "id": "S3",
+            "ipAddress": "127.0.0.1",
             "port": 3305,
-            "neighbors": [
-                "C",
-                "D",
-                "R2"
-            ]
+            "neighbors": ["C"]
         }
     ],
     "routers": [
@@ -70,16 +52,13 @@
             "realPort": 3306,
             "virtualIPs": [
                 "net1.R1",
-                "net2.R1"
+                "net4.R1",
+                "net5.R1"
             ],
             "neighborsPerVirtualIP": {
                 "net1.R1": ["S1"],
-                "net2.R1": ["R2"]
-            },
-            "forwardingTable": {
-                "net1": "S1",
-                "net2": "R2",
-                "net3": "R2"
+                "net4.R1": ["R2"],
+                "net5.R1": ["R3"]
             }
         },
         {
@@ -87,17 +66,72 @@
             "realIP": "127.0.0.1",
             "realPort": 3307,
             "virtualIPs": [
-                "net2.R2",
-                "net3.R2"
+                "net4.R2",
+                "net6.R2",
+                "net7.R2"
             ],
             "neighborsPerVirtualIP": {
-                "net2.R2": ["S1"],
-                "net3.R2": ["R2"]
-            },
-            "forwardingTable": {
-                "net1": "R1",
-                "net2": "R1",
-                "net3": "S2"
+                "net4.R2": ["R1"],
+                "net6.R2": ["R3"],
+                "net7.R2": ["R4"]
+            }
+        },
+        {
+            "id": "R3",
+            "realIP": "127.0.0.1",
+            "realPort": 3308,
+            "virtualIPs": [
+                "net2.R3",
+                "net5.R3",
+                "net6.R3",
+                "net8.R3"
+            ],
+            "neighborsPerVirtualIP": {
+                "net2.R3": ["S2"],
+                "net5.R3": ["R1"],
+                "net6.R3": ["R2"],
+                "net8.R3": ["R5"]
+            }
+        },
+        {
+            "id": "R4",
+            "realIP": "127.0.0.1",
+            "realPort": 3309,
+            "virtualIPs": [
+                "net7.R4",
+                "net9.R4",
+                "net10.R4"
+            ],
+            "neighborsPerVirtualIP": {
+                "net7.R4": ["R2"],
+                "net9.R4": ["R5"],
+                "net10.R4": ["R6"]
+            }
+        },
+        {
+            "id": "R5",
+            "realIP": "127.0.0.1",
+            "realPort": 3310,
+            "virtualIPs": [
+                "net8.R5",
+                "net9.R5"
+            ],
+            "neighborsPerVirtualIP": {
+                "net8.R5": ["R3"],
+                "net9.R5": ["R4"]
+            }
+        },
+        {
+            "id": "R6",
+            "realIP": "127.0.0.1",
+            "realPort": 3311,
+            "virtualIPs": [
+                "net3.R6",
+                "net10.R6"
+            ],
+            "neighborsPerVirtualIP": {
+                "net3.R6": ["S3"],
+                "net10.R6": ["R4"]
             }
         }
     ]
