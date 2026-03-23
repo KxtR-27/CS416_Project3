@@ -11,6 +11,13 @@ import java.util.Map;
 
 import static config.ConfigTypes.*;
 
+/* TODO: your group members need the following features in order to complete their work.
+ * - send LSA, we decided to use link-state
+ *
+ * 1. host and switch LSA packets
+ * 2. update config example to match project 3 demo topology
+ */
+
 /// Parses configuration information for Hosts, Switches, and Routers from the `config.json` file.
 ///
 /// @author KxtR-27 (Kat)
@@ -22,15 +29,12 @@ public class ConfigParser {
 
 
 	/// A map of all `Host` objects from the `config.json` file.
-	/// Maps are optimized for accessing values.
 	private static final Map<String, HostConfig> hostsMap = new HashMap<>();
 
 	/// A map of all `Switch` objects from the `config.json` file.
-	/// Maps are optimized for accessing values.
 	private static final Map<String, SwitchConfig> switchesMap = new HashMap<>();
 
 	/// A map of all `Router` objects from the `config.json` file.
-	/// Maps are optimized for accessing values.
 	private static final Map<String, RouterConfig> routersMap = new HashMap<>();
 
 
