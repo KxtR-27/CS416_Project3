@@ -32,7 +32,6 @@ public class ConfigTypes {
 			String realIP,
 			int realPort,
 			String[] virtualIPs,
-			Map<String, String[]> neighborsPerVirtualIP,
-			Map<String, String> forwardingTable
+			Map<String, String[]> neighborsPerVirtualIP
 	) {}
 }

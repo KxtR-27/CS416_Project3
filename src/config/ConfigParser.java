@@ -1,6 +1,7 @@
 package config;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
 
 import java.io.FileNotFoundException;
@@ -25,7 +26,7 @@ import static config.ConfigTypes.*;
 @SuppressWarnings("unused" /* because it's used later based on the rubric. */)
 public class ConfigParser {
 	/// The `Gson` object used in conjunction with a `JsonReader` to read data from the `config.json` file.
-	private static final Gson GSON = new Gson();
+	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
 
 	/// A map of all `Host` objects from the `config.json` file.
@@ -157,4 +158,16 @@ public class ConfigParser {
 			SwitchConfig[] switches,
 			RouterConfig[] routers
 	) {}
+
+
+	static void main() {
+		// generate config information
+		parseConfig();
+
+		// pretty-print the parsed configuration maps
+		System.out.printf(
+				"Hosts: %s%n%nSwitches: %s%n%nRouters: %s%n",
+				GSON.toJson(hostsMap), GSON.toJson(switchesMap), GSON.toJson(routersMap)
+		);
+	}
 }
