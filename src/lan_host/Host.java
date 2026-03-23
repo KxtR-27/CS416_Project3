@@ -1,7 +1,8 @@
 package lan_host;
 
 import config.ConfigParser;
-import config.DeviceConfig;
+import config.ConfigTypes.HostConfig;
+import config.ConfigTypes.SwitchConfig;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -31,16 +32,16 @@ public class Host {
     }
 
     private void Config() {
-        DeviceConfig deviceConfig = ConfigParser.getConfigForDevice(hostId);
+        HostConfig deviceConfig = ConfigParser.getHostConfig(hostId);
         if (deviceConfig == null) {
             throw new RuntimeException("No config found for host " + hostId);
         }
 
-        hostIp = deviceConfig.ipAddress();
-        hostPort = deviceConfig.port();
+        hostIp = deviceConfig.realIP();
+        hostPort = deviceConfig.realPort();
 
-        virtualIp = deviceConfig.virtualIp();
-        gatewayIp = deviceConfig.gatewayIp();
+        virtualIp = deviceConfig.virtualIP();
+        gatewayIp = deviceConfig.gatewayVIP();
         gatewayMac = gatewayIp.split("\\.")[1];
 
         String[] neighbors = deviceConfig.neighbors();
@@ -50,7 +51,7 @@ public class Host {
 
         String switchId = neighbors[0];
 
-        DeviceConfig switchConfig = ConfigParser.getConfigForDevice(switchId);
+        SwitchConfig switchConfig = ConfigParser.getSwitchConfig(switchId);
         if (switchConfig == null) {
             throw new RuntimeException("No config found for switch " + switchId);
         }
@@ -87,26 +88,30 @@ public class Host {
 
         String[] parts = frame.split(":");
 
-        if (parts.length < 5) {   // 5 fields
+        if (parts.length < 6) {   // 5 fields
             System.out.println("Bad frame received: " + frame);
             return;
 
         }
 
-        String srcMac = parts[0];
-        String dstMac = parts[1];
-        String srcIp = parts[2];
-        String dstIp = parts[3];
-        String msg = parts[4];
+        boolean isLSA = parts[0].equals("1");
+        String srcMac = parts[1];
+        String dstMac = parts[2];
+        String srcIp = parts[3];
+        String dstIp = parts[4];
+        String msg = parts[5];
 
-
-        if (dstMac.equals(hostId)) {
-            System.out.println("Message from " + srcMac + ": " + msg);
-        } else {
-            System.out.println("Frame for " + dstMac + " received at " + hostId + " (MAC mismatch)");
+        // if the frame is for a regular message
+        if (!isLSA) {
+            if (dstMac.equals(hostId))
+                System.out.println("Message from " + srcMac + ": " + msg);
+            else
+                System.out.println("Frame for " + dstMac + " received at " + hostId + " (MAC mismatch)");
         }
-
-
+        // if the frame is for an LSA
+        else {
+            // <...>
+        }
     }
 
 
@@ -123,10 +128,12 @@ public class Host {
             System.out.print("Enter message: ");
             String msg = scanner.nextLine().trim();
 
-            String frame = hostId + ":" + gatewayMac + ":" + virtualIp + ":" + dst + ":" + msg;
+            String frame = String.format(
+                    "%s:%s:%s:%s:%s:%s",
+                    "0", hostId, gatewayMac, virtualIp, dst, msg
+            );
 
             sendFrame(frame);
-
         }
     }
 
