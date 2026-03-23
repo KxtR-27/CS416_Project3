@@ -1,7 +1,7 @@
 package lan_host;
 
 import config.ConfigParser;
-import config.DeviceConfig;
+import config.ConfigTypes;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -11,8 +11,13 @@ import java.util.Scanner;
 public class Host {
 
     private final String hostId;
+
     private String hostIp;
     private int hostPort;
+
+    private String virtualIp;
+    private String gatewayVip;
+    private String gatewayMac;
 
     private String switchIp;
     private int switchPort;
@@ -21,95 +26,127 @@ public class Host {
 
     public Host(String hostId) throws Exception {
         this.hostId = hostId;
-        Config();
+        loadConfig();
         socket = new DatagramSocket(hostPort);
-        System.out.println("lan_host.Host " + hostId + " started on " + hostIp + ":" + hostPort);
+
+        System.out.println("Host " + hostId + " started on " + hostIp + ":" + hostPort);
         System.out.println("Connected to switch at " + switchIp + ":" + switchPort);
     }
 
-    private void Config() {
-        DeviceConfig deviceConfig = ConfigParser.getConfigForDevice(hostId);
-        if (deviceConfig == null) {
-            throw new RuntimeException("No config found for host " + hostId);
+    private void loadConfig() {
+
+        ConfigTypes.HostConfig cfg = ConfigParser.getHostConfig(hostId);
+        if (cfg == null) {
+            throw new RuntimeException("No host config found for " + hostId);
         }
 
-        hostIp = deviceConfig.ipAddress();
-        hostPort = deviceConfig.port();
+        hostIp = cfg.realIP();
+        hostPort = cfg.realPort();
+        virtualIp = cfg.virtualIP();
+        gatewayVip = cfg.gatewayVIP();
 
-        String[] neighbors = deviceConfig.neighbors();
+
+        gatewayMac = gatewayVip.split("\\.")[1];
+
+
+        String[] neighbors = cfg.neighbors();
         if (neighbors.length == 0) {
-            throw new RuntimeException("lan_host.Host has no neighbors in config");
+            throw new RuntimeException("Host " + hostId + " has no neighbors in config");
         }
 
         String switchId = neighbors[0];
 
-        DeviceConfig switchConfig = ConfigParser.getConfigForDevice(switchId);
-        if (switchConfig == null) {
-            throw new RuntimeException("No config found for switch " + switchId);
+
+        ConfigTypes.SwitchConfig sw = ConfigParser.getSwitchConfig(switchId);
+        if (sw == null) {
+            throw new RuntimeException("No switch config found for " + switchId);
         }
 
-        switchIp = switchConfig.ipAddress();
-        switchPort = switchConfig.port();
+        switchIp = sw.ipAddress();
+        switchPort = sw.port();
     }
 
     public void startReceiver() {
         Thread receiver = new Thread(() -> {
             try {
                 byte[] buffer = new byte[1024];
+
                 while (true) {
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                     socket.receive(packet);
+
                     String frame = new String(packet.getData(), 0, packet.getLength());
                     handleFrame(frame);
                 }
-            }catch (Exception e) {
-                System.out.println(e.getMessage());
+
+            } catch (Exception e) {
+                System.out.println("Receiver error: " + e.getMessage());
             }
         });
+
         receiver.setDaemon(true);
         receiver.start();
     }
 
-    // handleFrame - Cam
-    // frame looks like SRC:DST:MSG
-    // break it up
-    // make sure it has 3 parts
-    // if for me -> show msg
-    // if not -> debug print
     private void handleFrame(String frame) {
 
-        String[] parts = frame.split(":");
+        String[] parts = frame.split(":", 5);
 
-        if (parts.length < 3) {
+        if (parts.length != 5) {
             System.out.println("Bad frame received: " + frame);
             return;
         }
 
-        String src = parts[0];
-        String dst = parts[1];
-        String msg = parts[2];
 
 
-        if (dst.equals(hostId)) {
-            System.out.println("Message from " + src + ": " + msg);
-        } else {
-            // flooded frame
-            System.out.println("Frame for " + dst + " received at " + hostId + " (MAC mismatch)");
+        String srcMac = parts[0];
+        String dstMac = parts[1];
+        String srcIp = parts[2];
+        String dstIp = parts[3];
+        String msg = parts[4];
+
+        if (srcMac.equals(this.hostId)) {
+            return;
+        }
+
+        if (dstMac.equals(hostId)) {
+            String senderName = parts[2].contains(".") ? parts[2].split("\\.")[1] : parts[2];
+            System.out.println("Message from " + senderName + ": " + parts[4]);
         }
     }
 
     private void startSender() {
         Scanner scanner = new Scanner(System.in);
-        // loop is manually interrupted
-		//noinspection InfiniteLoopStatement
-		while (true) {
+
+        while (true) {
             System.out.print("Enter destination host ID: ");
-            String dst = scanner.nextLine().trim();
+            String dstHostId = scanner.nextLine().trim();
 
             System.out.print("Enter message: ");
             String msg = scanner.nextLine().trim();
 
-            String frame = hostId + ":" + dst + ":" + msg;
+
+            ConfigTypes.HostConfig dstCfg = ConfigParser.getHostConfig(dstHostId);
+            if (dstCfg == null) {
+                System.out.println("Unknown host ID: " + dstHostId);
+                continue;
+            }
+
+            String dstVip = dstCfg.virtualIP();
+            String mySubnet = virtualIp.split("\\.")[0];
+            String dstSubnet = dstVip.split("\\.")[0];
+
+            String targetMac;
+            if (mySubnet.equals(dstSubnet)) {
+                // Local destination: use the host's ID (e.g., "D")
+                targetMac = dstVip.split("\\.")[1];
+            } else {
+                // Remote destination: use the GATEWAY'S ID (e.g., "R2")
+                // gatewayMac was already calculated in loadConfig()!
+                targetMac = this.gatewayMac;
+            }
+
+            String frame = hostId + ":" + targetMac + ":" + virtualIp + ":" + dstVip + ":" + msg;
             sendFrame(frame);
         }
     }
@@ -124,22 +161,23 @@ public class Host {
                     switchPort
             );
             socket.send(packet);
+
         } catch (Exception e) {
-            e.printStackTrace(System.err);
+            System.err.println("Send error: " + e.getMessage());
         }
     }
 
-    public void start(){
+    public void start() {
         startReceiver();
         startSender();
     }
 
-
-    static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
         if (args.length != 1) {
             System.out.println("Usage: java lan_host.Host <HOST_ID>");
             return;
         }
+
         Host host = new Host(args[0]);
         host.start();
     }

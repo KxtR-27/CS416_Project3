@@ -1,7 +1,7 @@
 package lan_switch;
 
 import config.ConfigParser;
-import config.DeviceConfig;
+import config.ConfigTypes;
 
 import java.io.IOException;
 import java.net.*;
@@ -10,26 +10,26 @@ import java.util.Map;
 
 public class Switch {
     private final String id;
-	private int listeningPort;
-	private final Map<String, Integer> switchTable = new HashMap<>();
-    private final Map<Integer, DeviceConfig> virtualPorts = new HashMap<>();
+    private int listeningPort;
+    private final Map<String, Integer> switchTable = new HashMap<>();
+    private final Map<Integer, String> neighborIPs = new HashMap<>();
     private DatagramSocket listeningSocket;
 
-    private void create_and_update_switch_table(String sourceIP, int port){
-        if(!switchTable.containsKey(sourceIP) || switchTable.get(sourceIP) != port){
-            if (!switchTable.containsKey(sourceIP)) {
-                System.out.println("NEW HOST LEARNED: " + sourceIP + " on Port " + port);
+    private void create_and_update_switch_table(String sourceMAC, int port){
+        if(!switchTable.containsKey(sourceMAC) || switchTable.get(sourceMAC) != port){
+            if (!switchTable.containsKey(sourceMAC)) {
+                System.out.println("NEW MAC LEARNED: " + sourceMAC + " on Port " + port);
             } else {
-                System.out.println("HOST MOVED: " + sourceIP + " moved to Port " + port);
+                System.out.println("HOST MOVED: " + sourceMAC + " moved to Port " + port);
             }
-            switchTable.put(sourceIP, port);
+            switchTable.put(sourceMAC, port);
             display_switch_table();
         }
     }
 
     public void display_switch_table(){
         System.out.println("\n========= SWITCH TABLE (ID: " + this.id + ") =========");
-        System.out.printf("%-15s | %-10s%n", "Source IP/MAC", "Port");
+        System.out.printf("%-15s | %-10s%n", "MAC Address", "Port");
         System.out.println("-------------------------------------------");
 
         for (Map.Entry<String, Integer> entry : switchTable.entrySet()) {
@@ -40,15 +40,28 @@ public class Switch {
 
     public Switch(String id){
         this.id = id;
-        DeviceConfig myConfig = ConfigParser.getConfigForDevice(id);
+        ConfigTypes.SwitchConfig myConfig = ConfigParser.getSwitchConfig(id);
         if(myConfig != null){
-			this.listeningPort = myConfig.port();
+            this.listeningPort = myConfig.port();
             System.out.println("Config loaded for " + id);
             String[] neighbors = myConfig.neighbors();
-            for (String neighbor : neighbors) {
-                DeviceConfig neighborConfig = ConfigParser.getConfigForDevice(neighbor);
-                if (neighborConfig != null) {
-                    virtualPorts.put(neighborConfig.port(), neighborConfig);
+            for (String neighborID : neighbors) {
+
+                ConfigTypes.HostConfig host = ConfigParser.getHostConfig(neighborID);
+                if (host != null) {
+                    neighborIPs.put(host.realPort(), host.realIP());
+                    continue;
+                }
+
+                ConfigTypes.SwitchConfig sw = ConfigParser.getSwitchConfig(neighborID);
+                if (sw != null) {
+                    neighborIPs.put(sw.port(), sw.ipAddress());
+                    continue;
+                }
+
+                ConfigTypes.RouterConfig router = ConfigParser.getRouterConfig(neighborID);
+                if (router != null) {
+                    neighborIPs.put(router.realPort(), router.realIP());
                 }
             }
         }
@@ -56,28 +69,28 @@ public class Switch {
             System.out.println("No Configuration found with " + id);
         }
     }
-    public void processPacket(String sourceIP, String destinationIP, String fullFrame, int incomingPort) throws IOException {
-        create_and_update_switch_table(sourceIP, incomingPort);
-        if (!switchTable.containsKey(destinationIP)) {
-            System.out.println("FLOODING: Destination " + destinationIP + " unknown.");
-            for (DeviceConfig neighbor : virtualPorts.values()) {
-                if (neighbor.port() != incomingPort) {
-                    sendUDP(this.listeningSocket, neighbor.ipAddress(), neighbor.port(), fullFrame);
+    public void processPacket(String sourceMAC, String destinationMAC, String fullFrame, int incomingPort) throws IOException {
+        create_and_update_switch_table(sourceMAC, incomingPort);
+        if (!switchTable.containsKey(destinationMAC)) {
+            System.out.println("FLOODING: Destination " + destinationMAC + " unknown.");
+            for (Map.Entry<Integer, String> entry : neighborIPs.entrySet()) {
+                int port = entry.getKey();
+                String ip = entry.getValue();
+                if (port != incomingPort) {
+                    sendUDP(listeningSocket, ip, port, fullFrame);
                 }
             }
-        }
-            else {
-                int targetPort = switchTable.get(destinationIP);
-                DeviceConfig targetDevice = virtualPorts.get(targetPort);
-                if (targetDevice != null) {
-                    System.out.println("FORWARDING: Sending " + fullFrame + " to Port " + targetPort);
-                    sendUDP(this.listeningSocket, targetDevice.ipAddress(), targetPort, fullFrame);
-                }
-                else {
-                    System.err.println("Port " + targetPort + " has no associated DeviceConfig.");
-                }
+        } else {
+            int targetPort = switchTable.get(destinationMAC);
+            String targetIP = neighborIPs.get(targetPort);
+            if (targetIP != null) {
+                System.out.println("FORWARDING: Sending frame to port " + targetPort);
+                sendUDP(listeningSocket, targetIP, targetPort, fullFrame);
+            } else {
+                System.err.println("ERROR: No neighbor found for port " + targetPort);
             }
         }
+    }
 
 
     public void startListening() {
@@ -91,17 +104,12 @@ public class Switch {
             while (true) {
                 DatagramPacket p = new DatagramPacket(buffer, buffer.length);
                 this.listeningSocket.receive(p);
-                int portCheck = p.getPort();
-
-                if (portCheck == this.listeningPort){
-                    continue;
-                }
 
                 // Expecting -> "SRC:DEST:MSG"
                 String frame = new String(p.getData(), 0, p.getLength()).trim();
-                String[] parts = frame.split(":", 3);
+                String[] parts = frame.split(":", 5);
 
-                if (parts.length == 3) {
+                if (parts.length == 5) {
                     String src = parts[0];
                     String dest = parts[1];
                     int incomingPort = p.getPort();

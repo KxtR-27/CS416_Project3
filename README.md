@@ -1,4 +1,4 @@
-# Project 2
+# Project 3
 
 ###### Tim G., Brody R., Kat R., Kyle S., Camryn W. | CS 416 - Computer Networks and Distributed Systems
 
@@ -20,9 +20,15 @@ This section addresses and satisfies that material.
 
 ### Group Meetings
 
-- **<ins>Friday, 2/13/2026</ins> <kbd>in-class</kbd>**
+- **<ins>Monday, 3/16/2026</ins> <kbd>in-class</kbd>**
     - **Attendees:** Tim, Kat, Kyle, Brody
     - **Absentees:** Camryn
+- **<ins>Wednesday, 3/18/2026</ins> <kbd>in-class</kbd>**
+    - **Attendees:** Tim, Camryn, Kyle
+    - **Absentees:** Kat, Brody
+- **<ins>Friday, 3/20/2026</ins> <kbd>in-class</kbd>**
+    - **Attendees:** ..., ...
+    - **Absentees:** Kat, ...
 
 ### Contributions
 
@@ -30,11 +36,11 @@ Three main tasks were given for this project.
 The following table details those tasks as assigned amongst the group.
 It is still possible that team members may contribute to tasks other than their assignment.
 
-| Task                                  | Assignee 1                                               | Assignee 2                                         |
-|---------------------------------------|----------------------------------------------------------|----------------------------------------------------|
-| 1. Modifying config file and parser   | [**`@KxtR-27`**](https://github.com/KxtR-27)             | ...                                                |
-| 2. Modifying host and switch programs | [**`@CamWise17`**](https://github.com/CamWise17)         | [**`@KSanders04`**](https://github.com/KSanders04) |
-| 3. Creating router program            | [**`@timothygulley`**](https://github.com/timothygulley) | [**`@BroD-Prod`**](https://github.com/BroD-Prod)   |
+| Task                                                | Assignee 1                                               | Assignee 2                                         |
+|-----------------------------------------------------|----------------------------------------------------------|----------------------------------------------------|
+| 1. Restructure Config File for new network          | [**`@KxtR-27`**](https://github.com/KxtR-27)             | ...                                                |
+| 2. Router handling and new packets                  | [**`@CamWise17`**](https://github.com/CamWise17)         | [**`@KSanders04`**](https://github.com/KSanders04) |
+| 3. Algorithm for calculating and updating distances | [**`@timothygulley`**](https://github.com/timothygulley) | [**`@BroD-Prod`**](https://github.com/BroD-Prod)   |
 
 ---
 

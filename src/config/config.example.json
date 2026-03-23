@@ -69,17 +69,17 @@
             "realIP": "127.0.0.1",
             "realPort": 3306,
             "virtualIPs": [
-                "subnet1.R1",
-                "subnet2.R1"
+                "net1.R1",
+                "net2.R1"
             ],
             "neighborsPerVirtualIP": {
-                "subnet1.R1": ["S1"],
-                "subnet2.R1": ["R2"]
+                "net1.R1": ["S1"],
+                "net2.R1": ["R2"]
             },
             "forwardingTable": {
-                "subnet1": "S1",
-                "subnet2": "R2",
-                "subnet3": "R2"
+                "net1": "S1",
+                "net2": "R2",
+                "net3": "R2"
             }
         },
         {
@@ -87,17 +87,17 @@
             "realIP": "127.0.0.1",
             "realPort": 3307,
             "virtualIPs": [
-                "subnet2.R2",
-                "subnet3.R2"
+                "net2.R2",
+                "net3.R2"
             ],
             "neighborsPerVirtualIP": {
-                "subnet2.R2": ["S1"],
-                "subnet3.R2": ["R2"]
+                "net2.R2": ["S1"],
+                "net3.R2": ["R2"]
             },
             "forwardingTable": {
-                "subnet1": "R1",
-                "subnet2": "R1",
-                "subnet3": "S2"
+                "net1": "R1",
+                "net2": "R1",
+                "net3": "S2"
             }
         }
     ]

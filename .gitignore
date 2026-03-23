@@ -36,4 +36,5 @@ bin/
 # in light of this, an example config is offered instead, and changes to your *actual* config.json stay unique to you.
 src/config/config.json
 src/lan_switch/*.class
+src/router/*.class
 /.idea/codeStyles/codeStyleConfig.xml
