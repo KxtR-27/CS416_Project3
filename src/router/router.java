@@ -50,9 +50,42 @@ public class router {
         }
     }
 
-    private void sendLSA(String payload, String origin){
+    private void sendLSA(String payload, String origin) {
 
+        String frame = "LSA:" + this.id + ":ALL:" + this.id + ":ALL:" + payload;
+
+        byte[] data = frame.getBytes(StandardCharsets.UTF_8);
+
+
+        ConfigTypes.RouterConfig cfg = ConfigParser.getRouterConfig(id);
+
+
+        for (String vip : cfg.virtualIPs()) {
+            String[] neighbors = cfg.neighborsPerVirtualIP().get(vip);
+            if (neighbors == null) continue;
+
+            for (String neighbor : neighbors) {
+
+
+                if (neighbor.equals(origin)) continue;
+
+                ConfigTypes.RouterConfig nCfg = ConfigParser.getRouterConfig(neighbor);
+                if (nCfg == null) continue;
+
+                InetSocketAddress addr =
+                        new InetSocketAddress(nCfg.realIP(), nCfg.realPort());
+
+                try {
+                    socket.send(new DatagramPacket(data, data.length, addr));
+                    System.out.println("[ROUTER " + id + "] Sent LSA to " + neighbor);
+                } catch (IOException e) {
+                    System.err.println("[ROUTER " + id + "] Error sending LSA to " + neighbor);
+                }
+            }
+        }
     }
+
+
 
     private void computeDijkstra(){
 
