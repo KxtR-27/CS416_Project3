@@ -85,10 +85,63 @@ public class router {
         }
     }
 
-
-
     private void computeDijkstra(){
+        Map<String, Integer> dist = new HashMap<>();
+        Map<String, String> prev = new HashMap<>();
+        Set<String> visited = new HashSet<>();
 
+        for (String node : globalTopology.keySet()){
+            dist.put(node, Integer.MAX_VALUE);
+            prev.put(node, null);
+        }
+        dist.put(this.id, 0);
+
+        PriorityQueue<String[]> pq = new PriorityQueue<>(
+                Comparator.comparingInt(a -> Integer.parseInt(a[1]))
+        );
+        pq.add(new String[]{this.id, "0"});
+
+        while (!pq.isEmpty()){
+            String[] current = pq.poll();
+            String currentNode = current[0];
+            int currentCost  = Integer.parseInt(current[1]);
+            if (visited.contains(currentNode)) continue;
+            visited.add(currentNode);
+
+            for (String neighbor : globalTopology.get(currentNode)){
+                if (visited.contains(neighbor)) continue;
+                if (!dist.containsKey(neighbor))continue;
+
+                int newCost = currentCost + 1;
+
+                if (newCost < dist.get(neighbor)){
+                    dist.put(neighbor, newCost);
+                    prev.put(neighbor, currentNode);
+                    pq.add(new String[]{neighbor, String.valueOf(newCost)});
+                }
+            }
+        }
+
+        Map<String, String> firstHop = new HashMap<>();
+
+        for(String destination : dist.keySet()){
+            if (destination.equals(this.id)) continue;
+            String hop = destination;
+            while (prev.get(hop) != null && !prev.get(hop).equals(this.id)){
+                hop = prev.get(hop);
+            }
+            firstHop.put(destination, hop);
+        }
+
+        for (String destination : firstHop.keySet()) {
+            ConfigTypes.RouterConfig destConfig = ConfigParser.getRouterConfig(destination);
+            if (destConfig == null) continue;
+
+            for (String vip : destConfig.virtualIPs()) {
+                String subnet = vip.split("\\.")[0];
+                virtualRoutingTable.put(subnet, firstHop.get(destination));
+            }
+        }
     }
 
     public void print_routing_table(){
