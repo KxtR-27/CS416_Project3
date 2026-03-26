@@ -35,15 +35,21 @@ public class router {
             if (parts.length < 2) return;
 
             String origin = parts[0];
-            List<String> neighbors = Arrays.asList(parts[1].split("\\."));
+            List<String> neighbors = new ArrayList<>(Arrays.asList(Arrays.copyOfRange(parts, 1, parts.length)));
 
-            if(!neighbors.equals(globalTopology.get(origin))){
+            List<String> existingNeighbors = globalTopology.get(origin);
+            boolean isNewInfo = (existingNeighbors == null || !new HashSet<>(existingNeighbors).equals(new HashSet<>(neighbors)));
+            if(isNewInfo){
                 globalTopology.put(origin, neighbors);
+
+                for(String n :neighbors){
+                    globalTopology.putIfAbsent(n, new ArrayList<>());
+                }
+
                 System.out.println("[ROUTER " + this.id + "] Learned " + origin);
-
-                sendLSA(payload, origin);
-
                 computeDijkstra();
+                sendLSA(payload, origin);
+                print_routing_table();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -52,7 +58,7 @@ public class router {
 
     private void sendLSA(String payload, String origin) {
 
-        String frame = "LSA:" + this.id + ":ALL:" + this.id + ":ALL:" + payload;
+        String frame = "1:" + this.id + ":ALL:" + this.id + ":ALL:" + payload;
 
         byte[] data = frame.getBytes(StandardCharsets.UTF_8);
 
@@ -66,20 +72,26 @@ public class router {
 
             for (String neighbor : neighbors) {
 
-
                 if (neighbor.equals(origin)) continue;
 
-                ConfigTypes.RouterConfig nCfg = ConfigParser.getRouterConfig(neighbor);
-                if (nCfg == null) continue;
+                InetSocketAddress addr = null;
 
-                InetSocketAddress addr =
-                        new InetSocketAddress(nCfg.realIP(), nCfg.realPort());
-
-                try {
-                    socket.send(new DatagramPacket(data, data.length, addr));
-                    System.out.println("[ROUTER " + id + "] Sent LSA to " + neighbor);
-                } catch (IOException e) {
-                    System.err.println("[ROUTER " + id + "] Error sending LSA to " + neighbor);
+                ConfigTypes.RouterConfig nRouter = ConfigParser.getRouterConfig(neighbor);
+                if (nRouter != null) {
+                    addr = new InetSocketAddress(nRouter.realIP(), nRouter.realPort());
+                } else {
+                    // 2. If not a router, try to get it as a Switch
+                    ConfigTypes.SwitchConfig nSwitch = ConfigParser.getSwitchConfig(neighbor);
+                    if (nSwitch != null) {
+                        addr = new InetSocketAddress(nSwitch.ipAddress(), nSwitch.port());
+                    }
+                }
+                if (addr != null) {
+                    try {
+                        socket.send(new DatagramPacket(data, data.length, addr));
+                    } catch (IOException e) {
+                        System.err.println("[ROUTER " + id + "] Error sending LSA to " + neighbor);
+                    }
                 }
             }
         }
@@ -94,6 +106,7 @@ public class router {
             dist.put(node, Integer.MAX_VALUE);
             prev.put(node, null);
         }
+        if (!dist.containsKey(this.id)) return;
         dist.put(this.id, 0);
 
         PriorityQueue<String[]> pq = new PriorityQueue<>(
@@ -134,14 +147,54 @@ public class router {
         }
 
         for (String destination : firstHop.keySet()) {
+            String nextHopId = firstHop.get(destination);
+            if (nextHopId == null) {
+                System.out.println("[ROUTER " + this.id + "] Dropping packet");
+                return;
+            }
             ConfigTypes.RouterConfig destConfig = ConfigParser.getRouterConfig(destination);
-            if (destConfig == null) continue;
+            ConfigTypes.RouterConfig nextHopConfig = ConfigParser.getRouterConfig(nextHopId);
+            if (destConfig != null && nextHopConfig != null) {
 
-            for (String vip : destConfig.virtualIPs()) {
-                String subnet = vip.split("\\.")[0];
-                virtualRoutingTable.put(subnet, firstHop.get(destination));
+                ConfigTypes.RouterConfig myConfig = ConfigParser.getRouterConfig(this.id);
+                for (String vip : myConfig.virtualIPs()) {
+                    String subnet = vip.split("\\.")[0];
+                    String[] neighbors = myConfig.neighborsPerVirtualIP().get(vip);
+
+                    if (neighbors != null && neighbors.length > 0) {
+                        String neighbor = neighbors[0];
+
+                        virtualRoutingTable.put(subnet, neighbor);
+
+                        ConfigTypes.SwitchConfig sCfg = ConfigParser.getSwitchConfig(neighbor);
+                        if (sCfg != null) {
+                            routingTable.put(subnet, new InetSocketAddress(sCfg.ipAddress(), sCfg.port()));
+                        }
+                    }
+                }
+
+                for (String vip : destConfig.virtualIPs()) {
+                    String subnet = vip.split("\\.")[0];
+                    virtualRoutingTable.put(subnet, firstHop.get(destination));
+                    routingTable.put(subnet, new InetSocketAddress(nextHopConfig.realIP(), nextHopConfig.realPort()));
+                }
             }
         }
+    }
+
+    private void broadcastInitialLSA() {
+        ConfigTypes.RouterConfig cfg = ConfigParser.getRouterConfig(this.id);
+
+        StringBuilder sb = new StringBuilder(this.id);
+        for (String vip : cfg.virtualIPs()) {
+            String[] neighbors = cfg.neighborsPerVirtualIP().get(vip);
+            if (neighbors != null) {
+                for (String n : neighbors) {
+                    sb.append(".").append(n);
+                }
+            }
+        }
+        handleLSA(sb.toString());
     }
 
     public void print_routing_table(){
@@ -179,12 +232,20 @@ public class router {
                     " srcIp=" + srcIp + " dstIp=" + dstIp + " msg=" + msg);
 
             // get "net3" from "net3.D", then turn it into "subnet3"
-            String key = "subnet" + dstIp.split("\\.", 2)[0].substring(3);
+            String key = dstIp.split("\\.")[0];
 
             InetSocketAddress next = routingTable.get(key);
             String nextHopId = virtualRoutingTable.get(key);
 
+            if (nextHopId == null || next == null){
+                broadcastInitialLSA();
+                computeDijkstra();
+                next = routingTable.get(key);
+                nextHopId = virtualRoutingTable.get(key);
+            }
+
             String dstMacForFrame;
+
             if (nextHopId.startsWith("S")) {
                 dstMacForFrame = dstIp.split("\\.")[1];
             } else {
@@ -192,7 +253,7 @@ public class router {
                 dstMacForFrame = nextHopId;
             }
 
-            String out = this.id + ":" + dstMacForFrame + ":" + srcIp + ":" + dstIp + ":" + msg;
+            String out = "0:" + this.id + ":" + dstMacForFrame + ":" + srcIp + ":" + dstIp + ":" + msg;
             System.out.println("[ROUTER " + this.id + "] OUTGOING FRAME: " + out);
 
             byte[] data = out.getBytes(StandardCharsets.UTF_8);
