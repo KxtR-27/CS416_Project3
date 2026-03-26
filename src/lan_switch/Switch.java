@@ -107,11 +107,11 @@ public class Switch {
 
                 // Expecting -> "SRC:DEST:MSG"
                 String frame = new String(p.getData(), 0, p.getLength()).trim();
-                String[] parts = frame.split(":", 6);
+                String[] parts = frame.split(":", 5);
 
-                if (parts.length == 6) {
-                    String src = parts[1];
-                    String dest = parts[2];
+                if (parts.length == 5) {
+                    String src = parts[0];
+                    String dest = parts[1];
                     int incomingPort = p.getPort();
                     processPacket(src, dest, frame, incomingPort);
                 }

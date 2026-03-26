@@ -89,15 +89,17 @@ public class Host {
 
     private void handleFrame(String frame) {
 
-        String[] parts = frame.split(":", 6);
+        String[] parts = frame.split(":", 5);
 
-        if (parts.length != 6) {
+        if (parts.length != 5) {
             System.out.println("Bad frame received: " + frame);
             return;
         }
 
-        String srcMac = parts[1];
-        String dstMac = parts[2];
+
+
+        String srcMac = parts[0];
+        String dstMac = parts[1];
 
         if (srcMac.equals(this.hostId)) {
             return;
@@ -105,13 +107,14 @@ public class Host {
 
         if (dstMac.equals(hostId)) {
             String senderName = parts[2].contains(".") ? parts[2].split("\\.")[1] : parts[2];
-            System.out.println("Message from " + senderName + ": " + parts[5]);
+            System.out.println("Message from " + senderName + ": " + parts[4]);
         }
     }
 
     @SuppressWarnings("InfiniteLoopStatement")
     private void startSender() {
         Scanner scanner = new Scanner(System.in);
+
         while (true) {
             System.out.print("Enter destination host ID: ");
             String dstHostId = scanner.nextLine().trim();
@@ -140,7 +143,7 @@ public class Host {
                 targetMac = this.gatewayMac;
             }
 
-            String frame = "0:" + hostId + ":" + targetMac + ":" + virtualIp + ":" + dstVip + ":" + msg;
+            String frame = hostId + ":" + targetMac + ":" + virtualIp + ":" + dstVip + ":" + msg;
             sendFrame(frame);
         }
     }
@@ -166,7 +169,7 @@ public class Host {
         startSender();
     }
 
-    static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
         if (args.length != 1) {
             System.out.println("Usage: java lan_host.Host <HOST_ID>");
             return;
