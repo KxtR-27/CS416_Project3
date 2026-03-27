@@ -30,19 +30,19 @@
             "id": "S1",
             "ipAddress": "10.222.29.192",
             "port": 3303,
-            "neighbors": ["A"]
+            "neighbors": ["A", "R1"]
         },
         {
             "id": "S2",
             "ipAddress": "10.222.29.192",
             "port": 3304,
-            "neighbors": ["B"]
+            "neighbors": ["B", "R3"]
         },
         {
             "id": "S3",
             "ipAddress": "10.222.29.192",
             "port": 3305,
-            "neighbors": ["C"]
+            "neighbors": ["C", "R6"]
         }
     ],
     "routers": [
