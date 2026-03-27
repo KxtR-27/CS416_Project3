@@ -2,7 +2,7 @@
     "hosts": [
         {
             "id": "A",
-            "realIP": "127.0.0.1",
+            "realIP": "10.222.75.196",
             "realPort": 3300,
             "virtualIP": "net1.A",
             "gatewayVIP": "net1.R1",
@@ -10,7 +10,7 @@
         },
         {
             "id": "B",
-            "realIP": "127.0.0.1",
+            "realIP": "10.222.75.196",
             "realPort": 3301,
             "virtualIP": "net2.B",
             "gatewayVIP": "net2.R3",
@@ -18,7 +18,7 @@
         },
         {
             "id": "C",
-            "realIP": "127.0.0.1",
+            "realIP": "10.222.75.196",
             "realPort": 3302,
             "virtualIP": "net3.C",
             "gatewayVIP": "net3.R2",
@@ -28,19 +28,19 @@
     "switches": [
         {
             "id": "S1",
-            "ipAddress": "127.0.0.1",
+            "ipAddress": "10.222.29.192",
             "port": 3303,
             "neighbors": ["A"]
         },
         {
             "id": "S2",
-            "ipAddress": "127.0.0.1",
+            "ipAddress": "10.222.29.192",
             "port": 3304,
             "neighbors": ["B"]
         },
         {
             "id": "S3",
-            "ipAddress": "127.0.0.1",
+            "ipAddress": "10.222.29.192",
             "port": 3305,
             "neighbors": ["C"]
         }
@@ -48,7 +48,7 @@
     "routers": [
         {
             "id": "R1",
-            "realIP": "127.0.0.1",
+            "realIP": "10.222.107.213",
             "realPort": 3306,
             "virtualIPs": [
                 "net1.R1",
@@ -63,7 +63,7 @@
         },
         {
             "id": "R2",
-            "realIP": "127.0.0.1",
+            "realIP": "10.222.107.213",
             "realPort": 3307,
             "virtualIPs": [
                 "net4.R2",
@@ -78,7 +78,7 @@
         },
         {
             "id": "R3",
-            "realIP": "127.0.0.1",
+            "realIP": "10.222.107.213",
             "realPort": 3308,
             "virtualIPs": [
                 "net2.R3",
@@ -95,7 +95,7 @@
         },
         {
             "id": "R4",
-            "realIP": "127.0.0.1",
+            "realIP": "10.222.107.213",
             "realPort": 3309,
             "virtualIPs": [
                 "net7.R4",
@@ -110,7 +110,7 @@
         },
         {
             "id": "R5",
-            "realIP": "127.0.0.1",
+            "realIP": "10.222.107.213",
             "realPort": 3310,
             "virtualIPs": [
                 "net8.R5",
@@ -123,7 +123,7 @@
         },
         {
             "id": "R6",
-            "realIP": "127.0.0.1",
+            "realIP": "10.222.107.213",
             "realPort": 3311,
             "virtualIPs": [
                 "net3.R6",
